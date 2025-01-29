@@ -1,0 +1,12 @@
+{
+    "agent": "test",
+    "actionGroup": "test",
+    "function": "getCryptoPrice",
+    "parameters": [
+      {
+        "name": "coin",
+        "value": "bitcoin"
+      }
+    ],
+    "messageVersion": "1.0"
+  }

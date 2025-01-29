@@ -1,0 +1,13 @@
+AWSTemplateFormatVersion: '2010-09-01'
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  CryptoAIFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.lambda_handler
+      Runtime: python3.10
+      CodeUri: .
+      Environment:
+        Variables:
+          AMB_ACCESSOR_TOKEN: your_token_here
+          COINGECKO_API_KEY: your_key_here
