@@ -1,9 +1,9 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
 import json
-
 from aws_lambda_powertools import Logger
 
 logger = Logger(service="amazon_bedrock_knowledge_base_infra_setup_lambda", level="INFO")
-
 
 def create(
     rds_data_api_client,

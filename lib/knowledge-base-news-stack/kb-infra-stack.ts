@@ -1,7 +1,8 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: MIT-0
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
-import * as s3 from 'aws-cdk-lib/aws-s3';
 import { bedrock as bedrockGenAIConstructs } from '@cdklabs/generative-ai-cdk-constructs';
 import { getConfig, EnvironmentConfig } from '../../utils/environment';
 

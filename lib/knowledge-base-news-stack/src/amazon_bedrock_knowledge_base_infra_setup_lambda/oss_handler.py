@@ -1,7 +1,7 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
 import os
-
 from aws_lambda_powertools import Logger
-
 
 from client_utils import (
     get_caller_arn,

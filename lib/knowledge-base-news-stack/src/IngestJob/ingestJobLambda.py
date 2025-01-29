@@ -1,7 +1,8 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
 import os
 from typing import Dict
 from boto3 import client
-import json
 
 KNOWLEDGE_BASE_ID = os.environ['KNOWLEDGE_BASE_ID']
 DATA_SOURCE_ID = os.environ['DATA_SOURCE_ID']

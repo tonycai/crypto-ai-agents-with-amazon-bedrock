@@ -1,3 +1,5 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: MIT-0
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as iam from 'aws-cdk-lib/aws-iam';
@@ -144,14 +146,14 @@ export class OpenSearchServerlessInfraStack extends cdk.Stack {
     const dependencyLayer = new lambda.LayerVersion(this, 'DependenciesLayer', {
       code: lambda.Code.fromAsset(path.join(__dirname, 'lambda_layer'), {
         bundling: {
-          image: lambda.Runtime.PYTHON_3_9.bundlingImage,
+          image: lambda.Runtime.PYTHON_3_12.bundlingImage,
           command: [
             'bash', '-c',
             'pip install -r requirements.txt -t /asset-output/python'
           ],
         },
       }),
-      compatibleRuntimes: [lambda.Runtime.PYTHON_3_9, lambda.Runtime.PYTHON_3_10],
+      compatibleRuntimes: [lambda.Runtime.PYTHON_3_12],
       license: 'Apache-2.0',
       description: 'dependency_layer including requests, requests-aws4auth, aws-lambda-powertools, opensearch-py'
     });
@@ -177,13 +179,12 @@ export class OpenSearchServerlessInfraStack extends cdk.Stack {
     // Lambda Function
     const ossIndexCreationLambda = new lambda.Function(this, 'BKB-OSS-InfraSetupLambda', {
       functionName: `BKB-OSS-${indexName}-InfraSetupLambda`,
-      // code: lambda.Code.fromAsset('src/amazon_bedrock_knowledge_base_infra_setup_lambda'),
       code: lambda.Code.fromAsset(path.join(__dirname, 'src/amazon_bedrock_knowledge_base_infra_setup_lambda')),
       handler: 'oss_handler.lambda_handler',
       role: ossLambdaRole,
       memorySize: 1024,
       timeout: cdk.Duration.minutes(14),
-      runtime: lambda.Runtime.PYTHON_3_10,
+      runtime: lambda.Runtime.PYTHON_3_12,
       tracing: lambda.Tracing.ACTIVE,
       currentVersionOptions: { removalPolicy: cdk.RemovalPolicy.DESTROY },
       layers: [dependencyLayer],
