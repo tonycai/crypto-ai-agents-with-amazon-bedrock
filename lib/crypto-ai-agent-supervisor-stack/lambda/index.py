@@ -127,7 +127,7 @@ def resolve_ens(ens_name):
         return None
 
    
-def sendtx(receiver, amount):
+def sendTx(receiver, amount):
     
     from_address = get_wallet_address()
     
@@ -142,7 +142,6 @@ def sendtx(receiver, amount):
 
     # Define transaction parameters
     transaction = {
-            'from': from_address,
             'to': receiver,
             'value': w3.to_wei(amount, 'ether'),  
             'gas': 21000,  # 
@@ -151,23 +150,36 @@ def sendtx(receiver, amount):
             'chainId': chain_id,
     }
 
+    print(f"Transaction details: {transaction}")
+
+    unsigned_tx = ""
     # Create the unsigned transaction
-    unsigned_tx = serializable_unsigned_transaction_from_dict(transaction)
-    message_to_sign = unsigned_tx.hash()
+    try:
+        unsigned_tx = serializable_unsigned_transaction_from_dict(transaction)
+    except Exception as e:
+        print(f"Error serializing transaction: {e}")
+        return "Failed to send because of serialization error"
+    print(f"Unsigned transaction: {unsigned_tx}")
+    # message_to_sign = unsigned_tx.hash()
+    message_to_sign = unsigned_tx
+    print(f"Message to sign: {message_to_sign.hex()}")
 
     # Sign the transaction hash using KMS
     kms_client = boto3.client('kms')
+    print(f"Initialized KMS client")
     sign_response = kms_client.sign(
         KeyId='alias/crypto-ai-agent-wallet',
         Message=message_to_sign,
         MessageType='RAW',
         SigningAlgorithm='ECDSA_SHA_256'
     )
+    print(f"Signature response: {sign_response}")
 
     # Extract r, s values from the signature
     r = int.from_bytes(sign_response['Signature'][:32], 'big')
     s = int.from_bytes(sign_response['Signature'][32:64], 'big')
     v = chain_id * 2 + 35  # Standard v value for EIP-155
+    print(f"Extracted v: {v}, r: {r}, s: {s}")
 
     # Create the signed transaction
     signed_tx = w3.eth.account.account.Transaction(
@@ -181,6 +193,7 @@ def sendtx(receiver, amount):
         r=r,
         s=s
     )
+    print(f"Signed transaction: {signed_tx}")
 
     # Send the transaction
     try:
@@ -290,13 +303,13 @@ def getWalletAddress():
     address = get_wallet_address()
     return address
     
-def getCryptoPrice(coin):
+def getCryptoPrice(token):
     
     url = "https://api.coingecko.com/api/v3/coins/markets"
     
     params = {
     "vs_currency": "usd",
-    "ids": coin
+    "ids": token.lower()
     }
     headers = {
         "accept": "application/json",
@@ -313,7 +326,7 @@ def getCryptoPrice(coin):
             price = data[0]["current_price"]
             return price
         else:
-            return f"No data found for {coin}"
+            return f"No data found for {token}"
     else:
         return f"Error: {response.status_code} - {response.text}"
 
@@ -322,7 +335,7 @@ def lambda_handler(event, context):
     actionGroup = event['actionGroup']
     function = event['function']    
 
-    if function == "sendtx":
+    if function == "sendTx":
         parameters = {param['name']: param['value'] for param in event['parameters']}
     
         print (parameters)
@@ -330,7 +343,7 @@ def lambda_handler(event, context):
         amount = parameters.get('amount')
         receiver = parameters.get('receiver')
         
-        result = sendtx(receiver,amount)
+        result = sendTx(receiver,amount)
         responseBody =  {
         "TEXT": {
             "body": result
@@ -363,8 +376,8 @@ def lambda_handler(event, context):
         parameters = {param['name']: param['value'] for param in event['parameters']}
     
         print (parameters)
-        coin = parameters.get('coin')
-        result = getCryptoPrice(coin)
+        token = parameters.get('token')
+        result = getCryptoPrice(token)
         responseBody =  {
         "TEXT": {
             "body": result
@@ -384,6 +397,12 @@ def lambda_handler(event, context):
         responseBody =  {
         "TEXT": {
             "body": result
+        }
+    }
+    else:
+        responseBody =  {
+        "TEXT": {
+            "body": f"Function {function} not found"
         }
     }
         
