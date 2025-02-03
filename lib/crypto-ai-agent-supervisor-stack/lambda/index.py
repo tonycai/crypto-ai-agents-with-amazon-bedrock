@@ -7,7 +7,7 @@ import os
 from web3 import Web3
 from math import log10
 from datetime import datetime, timedelta 
-from eth_account._utils.legacy_transactions import serializable_unsigned_transaction_from_dict
+from eth_account._utils.legacy_transactions import serializable_unsigned_transaction_from_dict, encode_transaction
 
 aws_region = boto3.session.Session().region_name
 
@@ -143,7 +143,7 @@ def sendTx(receiver, amount):
     # Define transaction parameters
     transaction = {
             'to': receiver,
-            'value': w3.to_wei(amount, 'ether'),  
+            'value': 1, # w3.to_wei(amount, 'ether'),  
             'gas': 21000,  # 
             'gasPrice': w3.to_wei(150, 'gwei'),
             'nonce': w3.eth.get_transaction_count(from_address),
@@ -160,9 +160,9 @@ def sendTx(receiver, amount):
         print(f"Error serializing transaction: {e}")
         return "Failed to send because of serialization error"
     print(f"Unsigned transaction: {unsigned_tx}")
-    # message_to_sign = unsigned_tx.hash()
-    message_to_sign = unsigned_tx
-    print(f"Message to sign: {message_to_sign.hex()}")
+    message_to_sign = unsigned_tx.hash()
+
+    # print(f"Message to sign: {message_to_sign.hex()}")
 
     # Sign the transaction hash using KMS
     kms_client = boto3.client('kms')
@@ -170,7 +170,7 @@ def sendTx(receiver, amount):
     sign_response = kms_client.sign(
         KeyId='alias/crypto-ai-agent-wallet',
         Message=message_to_sign,
-        MessageType='RAW',
+        MessageType='DIGEST',
         SigningAlgorithm='ECDSA_SHA_256'
     )
     print(f"Signature response: {sign_response}")
@@ -181,34 +181,71 @@ def sendTx(receiver, amount):
     v = chain_id * 2 + 35  # Standard v value for EIP-155
     print(f"Extracted v: {v}, r: {r}, s: {s}")
 
-    # Create the signed transaction
-    signed_tx = w3.eth.account.account.Transaction(
-        nonce=transaction['nonce'],
-        gasPrice=transaction['gasPrice'],
-        gas=transaction['gas'],
-        to=transaction['to'],
-        value=transaction['value'],
-        data=b'',
-        v=v,
-        r=r,
-        s=s
+    # Create the raw transaction
+    signed_tx = encode_transaction(
+        unsigned_tx,
+        vrs=(v, r, s)
     )
-    print(f"Signed transaction: {signed_tx}")
+
+    # # Create the signed transaction
+    # signed_tx = w3.eth.account.account.Transaction(
+    #     nonce=transaction['nonce'],
+    #     gasPrice=transaction['gasPrice'],
+    #     gas=transaction['gas'],
+    #     to=transaction['to'],
+    #     value=transaction['value'],
+    #     data=b'',
+    #     v=v,
+    #     r=r,
+    #     s=s
+    # )
+    # print(f"Signed transaction: {signed_tx}")
+
+    # signed_tx_bytes = None
 
     # Send the transaction
-    try:
-        tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-    except Exception as e:
-        print(f"Error sending transaction: {e}")
-        return "Transaction failed"
-    else:
-        print(f"Transaction sent with hash: {tx_hash.hex()}")
+    # Convert the signed transaction to bytes if it isn't already
+    # if isinstance(signed_tx, str):
+    #     signed_tx_bytes = bytes.fromhex(signed_tx.replace('0x', ''))
+    # else:
+    #     signed_tx_bytes = signed_tx
 
-        tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
-            
-        print(f"Transaction successful with hash: {tx_hash.hex()}")
-            
-        return tx_hash.hex()
+    v_values = [27, 28]  # Basic v values
+    tx_hash = None
+    for v_base in v_values:
+        print(f"Trying v value: {v_base}")
+        v = v_base + (chain_id * 2 + 8)  # Changed v calculation for EIP-155
+        print(f"Calculated v: {v}")
+        # Create the raw transaction
+        signed_tx = encode_transaction(
+            unsigned_tx,
+            vrs=(v, r, s)
+        )
+
+        try:
+            tx_hash = w3.eth.send_raw_transaction(signed_tx)
+            break  # If successful, exit the loop
+        except Exception as e:
+            print(f"Trying next v value due to error: {e}")
+            continue
+    else:
+        print("All v values failed")
+        return "Transaction failed"
+
+    # try:
+    #     tx_hash = w3.eth.send_raw_transaction(signed_tx)
+    # except Exception as e:
+    #     print(f"Error sending transaction: {e}")
+    #     return "Transaction failed"
+    # else:
+    # print(f"Transaction sent with hash: {tx_hash.hex()}")
+    print(f"Transaction sent with hash: {tx_hash}")
+
+    tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+        
+    print(f"Transaction successful with receipt: {tx_receipt}")
+        
+    return tx_hash.hex()
 
 def investAdviceMetric():
     url = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=365&interval=daily"

@@ -1,7 +1,13 @@
 # Welcome to Crypto AI Agents on Amazon Bedrock
 
-This repo still needs a lot of testing.
+Note: this repo is still undergoing development and testing.
 
+### Solution Architecture
+![Architecture Diagram](architecture.png)
+
+(Details forthcoming on the solution illustration)
+
+### Testing
 To test it:
 - deploy the CDK application using the instructions below (this has been tested to work)
 - below here nothing has been tested :) 

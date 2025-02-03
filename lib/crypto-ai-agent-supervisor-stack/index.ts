@@ -67,7 +67,7 @@ export class CryptoAIAgentSupervisorStack extends cdk.Stack {
       }),
     };
 
-    const actionGroupWalletManagerFunction = new lambda.DockerImageFunction(this, 'WalletManagerActionGroupFunction', {
+    const actionGroupInvestmentAdviceFunction = new lambda.DockerImageFunction(this, 'InvestmentAdviceActionGroupFunction', {
       code: lambda.DockerImageCode.fromImageAsset(path.join(__dirname, 'lambda'), {
         cmd: ['index.lambda_handler'],
         platform: ecrAssets.Platform.LINUX_AMD64,
@@ -76,7 +76,7 @@ export class CryptoAIAgentSupervisorStack extends cdk.Stack {
       environment: lambdaEnvironment,
     });
 
-    const actionGroupInvestmentAdviceFunction = new lambda.DockerImageFunction(this, 'InvestmentAdviceActionGroupFunction', {
+    const actionGroupWalletManagerFunction = new lambda.DockerImageFunction(this, 'WalletManagerActionGroupFunction', {
       code: lambda.DockerImageCode.fromImageAsset(path.join(__dirname, 'lambda'), {
         cmd: ['index.lambda_handler'],
         platform: ecrAssets.Platform.LINUX_AMD64,
@@ -93,14 +93,16 @@ export class CryptoAIAgentSupervisorStack extends cdk.Stack {
       'kms:DescribeKey',
       'kms:Encrypt',
       'kms:Decrypt',
-      'kms:GetPublicKey'
+      'kms:GetPublicKey',
+      'kms:Sign'
     );
 
     kmsWallet.grant(actionGroupInvestmentAdviceFunction,
       'kms:DescribeKey',
       'kms:Encrypt',
       'kms:Decrypt',
-      'kms:GetPublicKey'
+      'kms:GetPublicKey',
+      'kms:Sign'
     );
 
     const actionGroupInvestmentAdvice = new bedrockGenAIConstructs.AgentActionGroup(this, 'InvestmentAdvice', {
