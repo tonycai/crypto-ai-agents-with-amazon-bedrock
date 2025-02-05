@@ -3,6 +3,7 @@ requests==2.31.0
 web3==6.8.0
 eth-account==0.8.0
 cryptography==42.0.2
+asn1tools==0.158.0
 #cryptography==41.0.7
 #pycryptodome~=3.19.1
 #ckzg~=2.0.1

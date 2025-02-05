@@ -1,15 +1,23 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
 import json
+import asn1tools
 import boto3
 import requests
 import os
 from web3 import Web3
 from math import log10
 from datetime import datetime, timedelta 
-from eth_account._utils.legacy_transactions import serializable_unsigned_transaction_from_dict, encode_transaction
+from eth_account._utils.legacy_transactions import serializable_unsigned_transaction_from_dict, encode_transaction, Account
 
 aws_region = boto3.session.Session().region_name
+
+# max value on curve / https://github.com/ethereum/EIPs/blob/master/EIPS/eip-2.md
+SECP256_K1_N = int(
+    "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16
+)
+# the KMS alias for the agent's wallet
+KMS_KEY_ALIAS='alias/crypto-ai-agent-wallet'
 
 def getBlockchainRPCURL():
     # use a blockchain rpc endpoint if it has been provided
@@ -125,6 +133,72 @@ def resolve_ens(ens_name):
     except Exception as e:
         print(f"An error occurred while resolving ENS: {e}")
         return None
+    
+def get_recovery_id(msg_hash: bytes, r: int, s: int, eth_checksum_addr: str, chainid: int = None) -> dict:
+    # default for legacy tx type
+    if not chainid:
+        v_lower = 27
+        v_range = [v_lower, v_lower + 1]
+    else:
+        # v = CHAIN_ID * 2 + 35 + {0, 1}
+        v_lower = chainid * 2 + 35
+        v_range = [v_lower, v_lower + 1]
+
+    # todo just use parity bit in case of typed transaction
+    # https://www.secg.org/sec1-v2.pdf 4.1.6
+
+    for v in v_range:
+        recovered_addr = Account.recoverHash(message_hash=msg_hash, vrs=(v, r, s))
+
+        if recovered_addr == eth_checksum_addr:
+            return {"recovered_addr": recovered_addr, "v": v, "y_parity": v - v_lower}
+
+    return {}
+
+def sign_kms(key_id: str, msg_hash: bytes) -> dict:
+    client = boto3.client("kms")
+
+    response = client.sign(
+        KeyId=key_id,
+        Message=msg_hash,
+        MessageType="DIGEST",
+        SigningAlgorithm="ECDSA_SHA_256",
+    )
+
+    return response
+
+def find_eth_signature(kms_key_alias, plaintext: bytes) -> dict:
+    SIGNATURE_ASN = """
+    Signature DEFINITIONS ::= BEGIN
+
+    Ecdsa-Sig-Value  ::=  SEQUENCE  {
+           r     INTEGER,
+           s     INTEGER  }
+
+    END
+    """
+    signature_schema = asn1tools.compile_string(SIGNATURE_ASN)
+
+    signature = sign_kms(kms_key_alias, plaintext)
+
+    # https://tools.ietf.org/html/rfc3279#section-2.2.3
+    signature_decoded = signature_schema.decode(
+        "Ecdsa-Sig-Value", signature["Signature"]
+    )
+
+    # signature point
+    s = signature_decoded["s"]
+    # x value
+    r = signature_decoded["r"]
+
+    print("r: {} / s: {}".format(r, s))
+
+    secp256_k1_n_half = SECP256_K1_N / 2
+
+    if s > secp256_k1_n_half:
+        s = SECP256_K1_N - s
+
+    return {"r": r, "s": s}
 
    
 def sendTx(receiver, amount):
@@ -160,32 +234,111 @@ def sendTx(receiver, amount):
         print(f"Error serializing transaction: {e}")
         return "Failed to send because of serialization error"
     print(f"Unsigned transaction: {unsigned_tx}")
-    message_to_sign = unsigned_tx.hash()
+    unsigned_tx_hash = unsigned_tx.hash()
+
+    tx_sig = find_eth_signature(KMS_KEY_ALIAS, plaintext=unsigned_tx_hash)
+
+    tx_eth_recovered_pub_addr = get_recovery_id(
+        msg_hash=unsigned_tx_hash,
+        r=tx_sig["r"],
+        s=tx_sig["s"],
+        eth_checksum_addr=getWalletAddress(),
+        chainid=chain_id,
+    )
+
+    # if not tx_eth_recovered_pub_addr:
+    #     raise Exception("recovery parameter could not be determined")
+
+    # # legacy and EIP155 transactions require v
+    # if not tx_params.get('type'):
+    #     recovery_param = tx_eth_recovered_pub_addr['v']
+
+    # # typed transactions like EIP1559 require yfind_eth_signature_parity bit
+    # else:
+    recovery_param = tx_eth_recovered_pub_addr['y_parity']
+
+    tx_encoded = encode_transaction(
+        unsigned_transaction=unsigned_tx,
+        vrs=(recovery_param, tx_sig["r"], tx_sig["s"]),
+    )
+
+    # This is what gets sent to the network
+    hex_encoded_tx = w3.toHex(tx_encoded)
+
+    try:
+        tx_hash = w3.eth.send_raw_transaction(hex_encoded_tx)
+    except Exception as e:
+        print(f"Error sending transaction: {e}")
+        return "Transaction failed"
+    else:
+        print(f"Transaction sent with hash: {tx_hash}")
+
+    tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+        
+    print(f"Transaction successful with receipt: {tx_receipt}")
+        
+    return tx_hash.hex()
 
     # print(f"Message to sign: {message_to_sign.hex()}")
 
     # Sign the transaction hash using KMS
-    kms_client = boto3.client('kms')
-    print(f"Initialized KMS client")
-    sign_response = kms_client.sign(
-        KeyId='alias/crypto-ai-agent-wallet',
-        Message=message_to_sign,
-        MessageType='DIGEST',
-        SigningAlgorithm='ECDSA_SHA_256'
-    )
-    print(f"Signature response: {sign_response}")
+    # kms_client = boto3.client('kms')
+    # print(f"Initialized KMS client")
+    # sign_response = kms_client.sign(
+    #     KeyId='alias/crypto-ai-agent-wallet',
+    #     Message=message_to_sign,
+    #     MessageType='DIGEST',
+    #     SigningAlgorithm='ECDSA_SHA_256'
+    # )
+    # print(f"Signature response: {sign_response}")
 
-    # Extract r, s values from the signature
-    r = int.from_bytes(sign_response['Signature'][:32], 'big')
-    s = int.from_bytes(sign_response['Signature'][32:64], 'big')
-    v = chain_id * 2 + 35  # Standard v value for EIP-155
-    print(f"Extracted v: {v}, r: {r}, s: {s}")
+    # https://tools.ietf.org/html/rfc3279#section-2.2.3
+    # signature_decoded = signature_schema.decode(
+    #     "Ecdsa-Sig-Value", signature["Signature"]
+    # )
 
-    # Create the raw transaction
-    signed_tx = encode_transaction(
-        unsigned_tx,
-        vrs=(v, r, s)
-    )
+    # # signature point
+    # s = signature_decoded["s"]
+    # # x value
+    # r = signature_decoded["r"]
+
+    # print("r: {} / s: {}".format(r, s))
+
+    # secp256_k1_n_half = SECP256_K1_N / 2
+
+    # if s > secp256_k1_n_half:
+    #     s = SECP256_K1_N - s
+
+    # tx_sig = {"r": r, "s": s}
+
+    # tx_eth_recovered_pub_addr = get_recovery_id(
+    #     msg_hash=tx_hash,
+    #     r=tx_sig["r"],
+    #     s=tx_sig["s"],
+    #     eth_checksum_addr=get_wallet_address(),
+    #     chainid=chain_id,
+    # )
+
+
+    # # Extract r, s values from the signature
+    # r = int.from_bytes(sign_response['Signature'][:32], 'big')
+    # s = int.from_bytes(sign_response['Signature'][32:64], 'big')
+    # v = chain_id * 2 + 35  # Standard v value for EIP-155
+    # print(f"Extracted v: {v}, r: {r}, s: {s}")
+
+    # # Validate r and s values
+    # secp256k1n = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+    # if r >= secp256k1n or s >= secp256k1n:
+    #     print("r or s value too large")
+    #     return "Invalid signature values"
+    # else:
+    #     print("r or s value are valid")
+
+    # # Create the raw transaction
+    # signed_tx = encode_transaction(
+    #     unsigned_tx,
+    #     vrs=(v, r, s)
+    # )
 
     # # Create the signed transaction
     # signed_tx = w3.eth.account.account.Transaction(
@@ -210,27 +363,29 @@ def sendTx(receiver, amount):
     # else:
     #     signed_tx_bytes = signed_tx
 
-    v_values = [27, 28]  # Basic v values
-    tx_hash = None
-    for v_base in v_values:
-        print(f"Trying v value: {v_base}")
-        v = v_base + (chain_id * 2 + 8)  # Changed v calculation for EIP-155
-        print(f"Calculated v: {v}")
-        # Create the raw transaction
-        signed_tx = encode_transaction(
-            unsigned_tx,
-            vrs=(v, r, s)
-        )
+    # v_values = [27, 28]  # Basic v values
+    # tx_hash = None
+    # v_values = [chain_id * 2 + 35, chain_id * 2 + 36]  # Direct EIP-155 v values
 
-        try:
-            tx_hash = w3.eth.send_raw_transaction(signed_tx)
-            break  # If successful, exit the loop
-        except Exception as e:
-            print(f"Trying next v value due to error: {e}")
-            continue
-    else:
-        print("All v values failed")
-        return "Transaction failed"
+    # for v in v_values:
+    #     print(f"Trying v value: {v}")
+    #     # v = v_base + (chain_id * 2 + 8)  # Changed v calculation for EIP-155
+    #     print(f"Calculated v: {v}")
+    #     # Create the raw transaction
+    #     signed_tx = encode_transaction(
+    #         unsigned_tx,
+    #         vrs=(v, r, s)
+    #     )
+
+    #     try:
+    #         tx_hash = w3.eth.send_raw_transaction(signed_tx)
+    #         break  # If successful, exit the loop
+    #     except Exception as e:
+    #         print(f"Trying next v value due to error: {e}")
+    #         continue
+    # else:
+    #     print("All v values failed")
+    #     return "Transaction failed"
 
     # try:
     #     tx_hash = w3.eth.send_raw_transaction(signed_tx)
@@ -239,13 +394,13 @@ def sendTx(receiver, amount):
     #     return "Transaction failed"
     # else:
     # print(f"Transaction sent with hash: {tx_hash.hex()}")
-    print(f"Transaction sent with hash: {tx_hash}")
+    # print(f"Transaction sent with hash: {tx_hash}")
 
-    tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+    # tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
         
-    print(f"Transaction successful with receipt: {tx_receipt}")
+    # print(f"Transaction successful with receipt: {tx_receipt}")
         
-    return tx_hash.hex()
+    # return tx_hash.hex()
 
 def investAdviceMetric():
     url = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=365&interval=daily"

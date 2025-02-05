@@ -129,11 +129,6 @@ export class CryptoAIAgentSupervisorStack extends cdk.Stack {
                 },
             }
           },
-                    {
-            "description": "This function is used to get the agent's wallet address",
-            "name": "getWalletAddress",
-            "parameters": {}
-          }
         ]
         }
     });
@@ -177,6 +172,11 @@ export class CryptoAIAgentSupervisorStack extends cdk.Stack {
                   "required": true
                 },
             }
+          },
+          {
+            "description": "This function is used to get the agent's wallet address",
+            "name": "getWalletAddress",
+            "parameters": {}
           }]
         }
       });
