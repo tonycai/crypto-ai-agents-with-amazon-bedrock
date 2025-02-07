@@ -148,7 +148,7 @@ export class CryptoAIAgentSupervisorStack extends cdk.Stack {
             "parameters": {
                 "walletAddress": {
                   "type": "string",
-                  "description": "The walletAddress for which to query the balance",
+                  "description": "The address for which to query the balance. This can be a wallet address or an ENS name such as vitalik.eth",
                   "required": true
                 },
             }

@@ -26,6 +26,10 @@ def getBlockchainRPCURL():
     return blockchain_rpc_url
 
 w3 = Web3(Web3.HTTPProvider(getBlockchainRPCURL()))
+# Adding middleware to support ENS resolution on non-mainnet EVM chains
+from web3.middleware import ExtraDataToPOAMiddleware
+w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
+
 # Get and set chain ID
 chain_id = w3.eth.chain_id
 print(f"Connected to network with chain ID: {chain_id}")
@@ -124,15 +128,18 @@ def get_wallet_address():
         raise
 
 # Resolve ENS address
-def resolve_ens(ens_name):
+def resolve_ens(ens_name): 
+    print(f"Resolving ENS name: {ens_name}")
     try:
         # Check if the name is a valid ENS name
         if not ens_name.endswith('.eth'):
+            print(f"The name {ens_name} is not a valid ENS name. Returning None")
             return None  # Not an ENS name, return None
 
         # Resolve the ENS name to an Ethereum address
+        print("Calling w3.ens.address")
         address = w3.ens.address(ens_name)
-        
+        print(f"Resolved ENS address: {address}")
         if address is None:
             print(f"The ENS name {ens_name} is not registered or does not have an address set.")
             return None
@@ -433,7 +440,7 @@ def lambda_handler(event, context):
         parameters = {param['name']: param['value'] for param in event['parameters']}
     
         print (parameters)
-        address = parameters.get('address')
+        address = parameters.get('walletAddress')
         result = getBalance(address)
         responseBody =  {
         "TEXT": {
