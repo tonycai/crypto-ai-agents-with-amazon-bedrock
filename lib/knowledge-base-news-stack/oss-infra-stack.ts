@@ -146,14 +146,14 @@ export class OpenSearchServerlessInfraStack extends cdk.Stack {
     const dependencyLayer = new lambda.LayerVersion(this, 'DependenciesLayer', {
       code: lambda.Code.fromAsset(path.join(__dirname, 'lambda_layer'), {
         bundling: {
-          image: lambda.Runtime.PYTHON_3_12.bundlingImage,
+          image: lambda.Runtime.PYTHON_3_11.bundlingImage,
           command: [
             'bash', '-c',
             'pip install -r requirements.txt -t /asset-output/python'
           ],
         },
       }),
-      compatibleRuntimes: [lambda.Runtime.PYTHON_3_12],
+      compatibleRuntimes: [lambda.Runtime.PYTHON_3_11],
       license: 'Apache-2.0',
       description: 'dependency_layer including requests, requests-aws4auth, aws-lambda-powertools, opensearch-py'
     });
@@ -184,7 +184,7 @@ export class OpenSearchServerlessInfraStack extends cdk.Stack {
       role: ossLambdaRole,
       memorySize: 1024,
       timeout: cdk.Duration.minutes(14),
-      runtime: lambda.Runtime.PYTHON_3_12,
+      runtime: lambda.Runtime.PYTHON_3_11,
       tracing: lambda.Tracing.ACTIVE,
       currentVersionOptions: { removalPolicy: cdk.RemovalPolicy.DESTROY },
       layers: [dependencyLayer],

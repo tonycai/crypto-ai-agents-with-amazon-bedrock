@@ -73,7 +73,7 @@ export class KbBlockchainDataStack extends cdk.Stack {
     });
 
     const actionGroupFunction = new lambda.PythonFunction(this, 'ActionGroupFunction', {
-      runtime: cdk.aws_lambda.Runtime.PYTHON_3_12,
+      runtime: cdk.aws_lambda.Runtime.PYTHON_3_11,
       entry: path.join(__dirname, './lambda/bedrock-agent-txtsql-action'),
       handler: 'lambda_handler',
       timeout: cdk.Duration.seconds(300),
@@ -95,7 +95,7 @@ export class KbBlockchainDataStack extends cdk.Stack {
       })
     );
 
-    const actionGroup = new bedrock.AgentActionGroup(this, 'MyActionGroup', {
+    const actionGroup = new bedrock.AgentActionGroup(this, 'AthenaActionGroup', {
       actionGroupName: 'query_athena_cdk',
       description: 'Uses Amazon Athena with s3 data source that contains bitcoin and ethereum data',
       actionGroupExecutor: {

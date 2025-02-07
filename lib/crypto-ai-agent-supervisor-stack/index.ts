@@ -4,7 +4,6 @@ import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as managedblockchain from 'aws-cdk-lib/aws-managedblockchain';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as pythonLambda from '@aws-cdk/aws-lambda-python-alpha';
 import * as ecrAssets from 'aws-cdk-lib/aws-ecr-assets';
 import { bedrock as bedrockGenAIConstructs} from '@cdklabs/generative-ai-cdk-constructs';
 import * as path from 'path';
@@ -74,6 +73,7 @@ export class CryptoAIAgentSupervisorStack extends cdk.Stack {
       }),
       timeout: cdk.Duration.seconds(300),
       environment: lambdaEnvironment,
+      memorySize: 512
     });
 
     const actionGroupWalletManagerFunction = new lambda.DockerImageFunction(this, 'WalletManagerActionGroupFunction', {
@@ -86,6 +86,7 @@ export class CryptoAIAgentSupervisorStack extends cdk.Stack {
         AMB_ACCESSOR_TOKEN: accessorToken.getAtt('BillingToken').toString(),
         COINGECKO_API_KEY: config.coinGeckoAPIKey
       },
+      memorySize: 512
     });
 
     // This will grant all required permissions including DescribeKey
