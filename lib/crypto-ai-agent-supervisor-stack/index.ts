@@ -159,8 +159,9 @@ export class CryptoAIAgentSupervisorStack extends cdk.Stack {
             "parameters": {}
           },
           {
-            "description": "This function is used to send transactions",
+            "description": "This function is used to send transactions to the blockchain. It returns a transaction hash which should be returned to the user",
             "name": "sendTx",
+            "requireConfirmation": "ENABLED",
             "parameters": {
                 "amount": {
                   "type": "string",

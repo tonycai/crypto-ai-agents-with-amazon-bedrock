@@ -96,7 +96,7 @@ export class KbBlockchainDataStack extends cdk.Stack {
     );
 
     const actionGroup = new bedrock.AgentActionGroup(this, 'AthenaActionGroup', {
-      actionGroupName: 'query_athena_cdk',
+      actionGroupName: 'query-athena-cdk',
       description: 'Uses Amazon Athena with s3 data source that contains bitcoin and ethereum data',
       actionGroupExecutor: {
         lambda: actionGroupFunction
