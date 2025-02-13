@@ -18,7 +18,7 @@ if (!bucket) {
 export class KbInfraStack extends cdk.Stack {
   private kbRoleArn: string;
   private collectionArn: string;
-  public readonly knowledgeBase: bedrockGenAIConstructs.KnowledgeBase;
+  public readonly knowledgeBase: bedrockGenAIConstructs.VectorKnowledgeBase;
   
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -34,16 +34,12 @@ export class KbInfraStack extends cdk.Stack {
     this.knowledgeBase = this.createKnowledgeBase();
   }
 
-  private createKnowledgeBase(): bedrockGenAIConstructs.KnowledgeBase {
+  private createKnowledgeBase(): bedrockGenAIConstructs.VectorKnowledgeBase {
 
-    const kb = new bedrockGenAIConstructs.KnowledgeBase(this, 'e2eRagKB', {
+    const kb = new bedrockGenAIConstructs.VectorKnowledgeBase(this, 'e2eRagKB', {
         embeddingsModel: bedrockGenAIConstructs.BedrockFoundationModel.TITAN_EMBED_TEXT_V1,
-        instruction: 'Use this knowledge base to obtain historic and current news information about blockchain'
+        instruction: 'Use this knowledge base to obtain current news about blockchain'
     });
-    
-    // Generate a unique bucket name
-    // const bucketName = `blockchain-news-bucket-${cdk.Names.uniqueId(this)}`.toLowerCase();
-    // const newsBucket = new s3.Bucket(this, bucketName);
 
     kb.addWebCrawlerDataSource({
         sourceUrls: ['https://www.theblockbeats.info/'],

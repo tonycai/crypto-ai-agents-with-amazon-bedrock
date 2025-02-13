@@ -15,36 +15,38 @@ import { readFileSync } from 'fs';
  * This Bedrock Agent queries data from the AWS Public Blockchain Data data sets
  * https://registry.opendata.aws/aws-public-blockchain/
  */
-export class KbBlockchainDataStack extends cdk.Stack {
+export class BlockchainDataAgentStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
-    const orchestration = readFileSync(path.join(__dirname, './prompts/orchestration.txt'), 'utf-8');
+    const orchestrationFile = readFileSync(path.join(__dirname, './prompts/orchestration.txt'), 'utf-8');
+
     const agent = new bedrock.Agent(this, 'Agent', {
       name: 'BlockchainData_Collaborator_Agent',
       foundationModel: bedrock.BedrockFoundationModel.ANTHROPIC_CLAUDE_HAIKU_V1_0,
       shouldPrepareAgent: true,
-      enableUserInput: true,
-      aliasName: 'BlockchainDataAgent_v1',
+      userInputEnabled: true,
       instruction: "Role: You are a SQL developer creating queries for Amazon Athena Bitcoin and Ethereum databases. If you receive an ERROR from Athena, create another query to resolve the error message, and try to run it again. If there are 0 rows returned in the result set, specify that there were no results. Make sure that you properly return scientific notation values. Databases and Tables: Bitcoin: blocks, transactions Ethereum: blocks, contracts, logs, token_transfers, traces, transactions Objective: Generate SQL queries based on the provided schema and user request. Return the response from the query. Guidelines: 1. Query Decomposition and Understanding: Analyze the user’s request to understand the main objective. Identify the blockchain. If unclear, ask for clarification. - For general requests (e.g., how many blocks are there), use a UNION. 2. SQL Query Creation: Use relevant fields from the schema. - Use btc for Bitcoin (btc.blocks) and eth for Ethereum (eth.logs). Bitcoin has array structures for inputs and outputs that require the UNNEST keyword. Do not use EXPLODE, this is not supported. Cast varchar dates to date (e.g., cast(date_column as date)). - use the date_add function to create timestamps for requested time ranges. to request a date of one day ago use date_add('day', -1, now()). - Ensure date comparisons use proper functions (e.g., date >= date_add('day', -30, current_date)). - **Always cast the date column to a date type in both the `SELECT` and `WHERE` clauses to avoid type mismatches (e.g., `cast(date as date)`).** -Determine the current date and time with the query. -Avoid mistakes: proper casting, correct prefixes, accurate syntax. 3. Query Execution and Response: Execute queries in Athena. Return results as fetched. Limit results to 20 to avoid memory issues. 4. Queries for a token_address, use the lower function on both sides of the equality check. for example if the address is '0xA0b86991', you would compare like this lower(token_address) = lower('0xA0b86991') -To check if an array contains an item, use the built-in function `contains`. For example, to check if the array 'products' contains an item called 'shoe', use this syntax: contains(products, 'shoe') -SQL array indices start at 1 **Ensure data integrity and accuracy. Always make sure to generate a query. Format the date parameter as instructed. Do not hallucinate.**",
-      promptOverrideConfiguration: {
-        promptConfigurations: [
-          {
-            promptType: bedrock.PromptType.ORCHESTRATION,
-            basePromptTemplate: orchestration,
-            promptState: bedrock.PromptState.ENABLED,
-            promptCreationMode: bedrock.PromptCreationMode.OVERRIDDEN,
-            inferenceConfiguration: {
-              temperature: 0.0,
-              topP: 1,
-              topK: 250,
-              maximumLength: 2048,
-              stopSequences: ['</invoke>', '</answer>', '</error>'],
-            },
+      promptOverrideConfiguration: bedrock.PromptOverrideConfiguration.fromSteps(
+        [{
+          stepType: bedrock.AgentStepType.ORCHESTRATION,
+          stepEnabled: true,
+          customPromptTemplate: orchestrationFile,
+          inferenceConfig: {
+            temperature: 0.0,
+            topP: 1,
+            topK: 250,
+            maximumLength: 2048,
+            stopSequences: ['</invoke>', '</answer>', '</error>'],
           },
-        ]
-      }
+        }]
+      )
     });
 
+    const agentAlias = new bedrock.AgentAlias(this, 'AgentAlias', {
+      aliasName: 'BlockchainDataAgent',
+      agent: agent,
+      description: 'Initial alias',
+    });
 
     const athenaBucket = new s3.Bucket(this, 'AthenaQueryResultsBucket', {
       // bucketName: 'XXXXXXXXXXXXXX', // Optional: Specify a bucket name
@@ -73,7 +75,7 @@ export class KbBlockchainDataStack extends cdk.Stack {
     });
 
     const actionGroupFunction = new lambda.PythonFunction(this, 'ActionGroupFunction', {
-      runtime: cdk.aws_lambda.Runtime.PYTHON_3_11,
+      runtime: cdk.aws_lambda.Runtime.PYTHON_3_12,
       entry: path.join(__dirname, './lambda/bedrock-agent-txtsql-action'),
       handler: 'lambda_handler',
       timeout: cdk.Duration.seconds(300),
@@ -95,14 +97,12 @@ export class KbBlockchainDataStack extends cdk.Stack {
       })
     );
 
-    const actionGroup = new bedrock.AgentActionGroup(this, 'AthenaActionGroup', {
-      actionGroupName: 'query-athena-cdk',
+    const actionGroup = new bedrock.AgentActionGroup({
+      name: 'query-athena-cdk',
       description: 'Uses Amazon Athena with s3 data source that contains bitcoin and ethereum data',
-      actionGroupExecutor: {
-        lambda: actionGroupFunction
-      },
-      actionGroupState: "ENABLED",
-      apiSchema: bedrock.ApiSchema.fromAsset(path.join(__dirname, './athena-schema.json')),
+      executor: bedrock.ActionGroupExecutor.fromlambdaFunction(actionGroupFunction),
+      enabled: true,
+      apiSchema: bedrock.ApiSchema.fromLocalAsset(path.join(__dirname, './athena-schema.json')),
     });
 
     agent.addActionGroup(actionGroup);

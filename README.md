@@ -15,19 +15,24 @@ To test it:
 - once CDK has been deployed, you will likely need to manually start a sync for the blockchain news knowledge base web crawler
 
 ### Prepare Environment
+
 1. Copy `.env.sample` to a new `.env` file
-2. Update `.env` with the appropriate values, including the AWS account ID. You will also require a CoinGecko API key; however you can skip this for now if you are not planning to use the blockchain news knowledge base.
+2. Update `.env` with the appropriate values, including the AWS account ID. If you would like your agent to query current  cryptocurrency prices, you will need to obtain a CoinGecko API key; otherwise, you can skip this. The default solution uses Polygon mainnet via Amazon Managed Blockchain. You can override this and use a different network and provider by setting an RPC endpoint for `BLOCKCHAIN_RPC_URL`. 
 
 ### Install dependencies
-Run `npm install` to install the dependencies
+
+```
+npm install
+```
 
 ### Deploy the stacks
-Install CDK
+
+Install CDK locally
 ```
 npm install -g aws-cdk
 ```
 
-If you have not done so in this account before, you will need to run CDK bootstrap before deploying the stacks.
+If you have not done so in this account before, you will need to bootstrap your account for CDK before deploying the stacks.
 ```
 cdk bootstrap aws://${CDK_DEPLOY_ACCOUNT}/${CDK_DEPLOY_REGION}
 ```
@@ -38,6 +43,25 @@ cdk deploy --all --require-approval never
 ```
 
 The deployment time is about 10 minutes.
+
+### Enable model access
+
+If you have not used Claude Haiku v1 in this account before, you will need to enable this.
+1. Open the Bedrock console
+2. xxx
+
+### Orchestrating the two agents together
+
+The solution deploys two agents; a Supervisor Agent (Crypto AI Agent) which coordinates the user requests across various tasks, and a Collaborator Agent (Blockchain Data Agent) which fulfills a specific need of accessing historic blockchain data. We want our users to only have to send their queries to the Supervisor Agent, instead of needing to switch between agents. Therefore, any time a user wants to query historic blockchain data, we need our Supervisor Agent to delegate this request to the Collaborator Agent. The steps below guide you on how to do this.
+
+rough outline:
+1. from supervisor agent, enable multi-agent collaboration.
+2. under Collaboration configuration, select `Supervisor`
+3. select the blockchain data agent as the collaborator, and select a version (or alias?)
+4. set the collaborator name to `blockchain-data-collaborator-agent`
+5. set the Collaborator instruction to `The blockchain-data-collaborator-agent can query historic bitcoin and ethereum data, providing data such as number of transactions within a period of time, details of a block, or how many times a token was a transferred within a period of time.`
+6. Click 'save and exit'. Click `Prepare` to prepare a new version of the agent.
+
 
 ### Troubleshooting Deployment Issues
 

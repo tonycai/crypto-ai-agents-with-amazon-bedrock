@@ -11,7 +11,7 @@ import { getConfig, EnvironmentConfig } from '../../utils/environment';
 const config: EnvironmentConfig = getConfig();
 
 interface CryptoAIAgentSupervisorStackProps extends cdk.StackProps {
-  knowledgeBase: bedrockGenAIConstructs.KnowledgeBase;
+  knowledgeBase: bedrockGenAIConstructs.VectorKnowledgeBase;
 }
 
 export class CryptoAIAgentSupervisorStack extends cdk.Stack {
@@ -36,10 +36,9 @@ export class CryptoAIAgentSupervisorStack extends cdk.Stack {
       name: 'CryptoAI_Supervisor_Agent',
       foundationModel: bedrockGenAIConstructs.BedrockFoundationModel.AMAZON_NOVA_LITE_V1,
       shouldPrepareAgent: true,
-      enableUserInput: true,
-      aliasName: 'CryptoAIAgent_v1',
+      userInputEnabled: true,
       instruction: `
-        Role: You are a Crypto AI Agent. You have access to an Ethereum Virtual Machine compatible blockchain and can query it and send transactions from your own wallet. You can query the blockchain for information and perform actions such as sending transactions. You have access to knowledge bases that contain information about the latest blockchain news and historic blockchain transactional data. You have access to a wallet that you can use to send transactions to the blockchain. Use the Action Group to interact with the blockchain.
+        Role: You are a Crypto AI Agent. You have access to an Ethereum Virtual Machine compatible blockchain and can query it and send transactions from your own wallet. You can query the blockchain for information and perform actions such as sending transactions. You have access to a knowledge base that contains current blockchain news. You have access to a wallet that you can use to send transactions to the blockchain. Use the Action Group to interact with the blockchain.
 
         These are the functions you can invoke:
         sendTx - send a transaction to the blockchain
@@ -49,7 +48,12 @@ export class CryptoAIAgentSupervisorStack extends cdk.Stack {
         investAdviceMetric - get investment advice
         getWalletAddress - get your own wallet's address
       `,
+    });
 
+    const agentAlias = new bedrockGenAIConstructs.AgentAlias(this, 'AgentAlias', {
+      aliasName: 'CryptoAIAgent',
+      agent: agent,
+      description: 'Initial alias'
     });
 
     agent.addKnowledgeBase(props.knowledgeBase);
@@ -106,13 +110,11 @@ export class CryptoAIAgentSupervisorStack extends cdk.Stack {
       'kms:Sign'
     );
 
-    const actionGroupInvestmentAdvice = new bedrockGenAIConstructs.AgentActionGroup(this, 'InvestmentAdvice', {
-        actionGroupName: 'investment_advice',
+    const actionGroupInvestmentAdvice = new bedrockGenAIConstructs.AgentActionGroup({
+        name: 'investment_advice',
         description: 'Get investment advice and get token prices',
-        actionGroupExecutor: {
-            lambda: actionGroupWalletManagerFunction
-        },
-        actionGroupState: "ENABLED",
+        executor: bedrockGenAIConstructs.ActionGroupExecutor.fromlambdaFunction(actionGroupInvestmentAdviceFunction),
+        enabled: true,
         functionSchema: {
           functions: [{
             "description": "This function is used to get investment advice",
@@ -134,13 +136,11 @@ export class CryptoAIAgentSupervisorStack extends cdk.Stack {
         }
     });
 
-    const actionGroupWalletManagement = new bedrockGenAIConstructs.AgentActionGroup(this, 'WalletManagement', {
-        actionGroupName: 'wallet_management',
+    const actionGroupWalletManagement = new bedrockGenAIConstructs.AgentActionGroup({
+        name: 'wallet_management',
         description: 'Queries the wallet address, gets wallet token balances, and sends ether to a specified address',
-        actionGroupExecutor: {
-            lambda: actionGroupInvestmentAdviceFunction
-        },
-        actionGroupState: "ENABLED",
+        executor: bedrockGenAIConstructs.ActionGroupExecutor.fromlambdaFunction(actionGroupWalletManagerFunction),
+        enabled: true,
         functionSchema: {
           functions: [{
             "description": "This function is used to lend assets on-chain and query individual address balances",

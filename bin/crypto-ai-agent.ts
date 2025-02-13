@@ -10,7 +10,7 @@ import { CryptoAIAgentSupervisorStack } from '../lib/crypto-ai-agent-supervisor-
 import { KbRoleStack } from '../lib/knowledge-base-news-stack/kb-role-stack';
 import { OpenSearchServerlessInfraStack } from '../lib/knowledge-base-news-stack/oss-infra-stack';
 import { KbInfraStack } from '../lib/knowledge-base-news-stack/kb-infra-stack';
-import { KbBlockchainDataStack } from '../lib/knowledge-base-blockchain-data-stack';
+import { BlockchainDataAgentStack } from '../lib/knowledge-base-blockchain-data-stack';
 
 const app = new cdk.App();
 
@@ -26,19 +26,38 @@ openSearchServerlessInfraStack.node.addDependency(kbRoleStack);
 const kbInfraStack = new KbInfraStack(app, 'KbInfraStack');
 kbInfraStack.node.addDependency(openSearchServerlessInfraStack);
 
-// ### Create KnowledgeBase to ingest blockchain data
-const kbBlockchainDataStack = new KbBlockchainDataStack(app, 'BlockchainDataAgentStack');
-kbBlockchainDataStack.node.addDependency(kbInfraStack);
+// ### Create an agent to query historic blockchain data
+const blockchainDataAgentStack = new BlockchainDataAgentStack(app, 'BlockchainDataAgentStack');
+blockchainDataAgentStack.node.addDependency(kbInfraStack);
 
 // ### Create AI Agent
 const cryptoAIAgentSupervisorStack = new CryptoAIAgentSupervisorStack(app, 'CryptoAIAgentSupervisorStack', 
   { knowledgeBase: kbInfraStack.knowledgeBase }
 );
-cryptoAIAgentSupervisorStack.node.addDependency(kbBlockchainDataStack);
+cryptoAIAgentSupervisorStack.node.addDependency(blockchainDataAgentStack);
 
-// cdk.Aspects.of(app).add(new AwsSolutionsChecks())
+cdk.Aspects.of(app).add(new AwsSolutionsChecks())
 
-// NagSuppressions.addStackSuppressions(cryptoAIAgentSupervisorStack, [
-//   { id: 'AwsSolutions-IAM4', reason: 'AWSLambdaBasicExecutionRole, AWSLambdaVPCAccessExecutionRole are restrictive roles' },
-//   { id: 'AwsSolutions-IAM5', reason: 'Permission to read CF stack is restrictive enough' },
-// ], true);
+NagSuppressions.addStackSuppressions(kbRoleStack, [
+  { id: 'AwsSolutions-IAM5', reason: 'Permission to read CF stack is restrictive enough' },
+], true);
+
+NagSuppressions.addStackSuppressions(openSearchServerlessInfraStack, [
+  { id: 'AwsSolutions-IAM5', reason: 'Permission to read CF stack is restrictive enough' },
+], true);
+
+NagSuppressions.addStackSuppressions(kbInfraStack, [
+  { id: 'AwsSolutions-IAM4', reason: 'AWSLambdaBasicExecutionRole, AWSLambdaVPCAccessExecutionRole are restrictive roles' },
+  { id: 'AwsSolutions-IAM5', reason: 'Permission to read CF stack is restrictive enough' },
+], true);
+
+NagSuppressions.addStackSuppressions(blockchainDataAgentStack, [
+  { id: 'AwsSolutions-IAM4', reason: 'AWSLambdaBasicExecutionRole, AWSLambdaVPCAccessExecutionRole are restrictive roles' },
+  { id: 'AwsSolutions-IAM5', reason: 'Permission to read CF stack is restrictive enough' },
+  { id: 'AwsSolutions-S1', reason: 'S3 Bucket server access logs not required for this solution' },
+], true);
+
+NagSuppressions.addStackSuppressions(cryptoAIAgentSupervisorStack, [
+  { id: 'AwsSolutions-IAM4', reason: 'AWSLambdaBasicExecutionRole, AWSLambdaVPCAccessExecutionRole are restrictive roles' },
+  { id: 'AwsSolutions-IAM5', reason: 'Permission to read CF stack is restrictive enough' },
+], true);
