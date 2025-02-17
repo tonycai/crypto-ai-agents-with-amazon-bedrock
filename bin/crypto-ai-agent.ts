@@ -44,6 +44,7 @@ NagSuppressions.addStackSuppressions(kbRoleStack, [
 
 NagSuppressions.addStackSuppressions(openSearchServerlessInfraStack, [
   { id: 'AwsSolutions-IAM5', reason: 'Permission to read CF stack is restrictive enough' },
+  { id: 'AwsSolutions-L1', reason: 'Stack dependencies have been tested with Python 3.12' },
 ], true);
 
 NagSuppressions.addStackSuppressions(kbInfraStack, [
@@ -55,6 +56,7 @@ NagSuppressions.addStackSuppressions(blockchainDataAgentStack, [
   { id: 'AwsSolutions-IAM4', reason: 'AWSLambdaBasicExecutionRole, AWSLambdaVPCAccessExecutionRole are restrictive roles' },
   { id: 'AwsSolutions-IAM5', reason: 'Permission to read CF stack is restrictive enough' },
   { id: 'AwsSolutions-S1', reason: 'S3 Bucket server access logs not required for this solution' },
+  { id: 'AwsSolutions-L1', reason: 'web3py dependency requires Python 3.12' },
 ], true);
 
 NagSuppressions.addStackSuppressions(cryptoAIAgentSupervisorStack, [
