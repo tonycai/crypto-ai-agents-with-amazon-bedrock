@@ -127,29 +127,105 @@ def get_wallet_address():
         print(f"Error getting wallet address: {e}")
         raise
 
-# Resolve ENS address
-def resolve_ens(ens_name): 
-    print(f"Resolving ENS name: {ens_name}")
-    try:
-        # Check if the name is a valid ENS name
-        if not ens_name.endswith('.eth'):
-            print(f"The name {ens_name} is not a valid ENS name. Returning None")
-            return None  # Not an ENS name, return None
+# Resolve domain address
+def resolve_domain(domain):
 
-        # Resolve the ENS name to an Ethereum address
-        print("Calling w3.ens.address")
-        address = w3.ens.address(ens_name)
-        print(f"Resolved ENS address: {address}")
-        if address is None:
-            print(f"The ENS name {ens_name} is not registered or does not have an address set.")
-            return None
-        else:
-            print(f"The address for {ens_name} is: {address}")
-            return address
+    print(f"Resolving domain: {domain}")
     
+    # if it's an formal address then just return
+    if domain and isinstance(domain, str) and domain.startswith('0x') and len(domain) == 42:
+        return domain
+        
+    try:
+        # initialize Polygon resolver
+        amb_accessor_token = os.environ.get('AMB_ACCESSOR_TOKEN')
+        if not amb_accessor_token:
+            raise ValueError("AMB_ACCESSOR_TOKEN environment variable is not set")
+            
+        # unstoppable mainnet contract address
+        polygon_address = '0xA3f32c8cd786dc089Bd1fC175F2707223aeE5d00'
+        
+        # ABI configuration
+        abi = [
+            {
+                "constant": True,
+                "inputs": [
+                    {
+                        "internalType": "string[]",
+                        "name": "keys",
+                        "type": "string[]"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "tokenId",
+                        "type": "uint256"
+                    }
+                ],
+                "name": "getData",
+                "outputs": [
+                    {
+                        "internalType": "address",
+                        "name": "resolver",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "address",
+                        "name": "owner",
+                        "type": "address"
+                    },
+                    {
+                        "internalType": "string[]",
+                        "name": "values",
+                        "type": "string[]"
+                    }
+                ],
+                "payable": False,
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ]
+        
+        # Initialize contract
+        contract = w3.eth.contract(
+            address=polygon_address,
+            abi=abi
+        )
+        
+        # Implement namehashing
+        def namehash(name):
+            if not name:
+                return b'\0' * 32
+            
+            if name.startswith('.'):
+                name = name[1:]
+                
+            labels = name.split('.')
+            labels.reverse()
+            
+            node = b'\0' * 32
+            for label in labels:
+                label_hash = w3.keccak(label.encode('utf-8'))
+                node = w3.keccak(node + label_hash)
+                
+            return node.hex()
+            
+        # Generate tokenId and resolve
+        token_id = int(namehash(domain), 16)
+        result = contract.functions.getData([], token_id).call()
+        
+        # Check if owner was found
+        if result[1] == '0x0000000000000000000000000000000000000000':
+            print(f"Domain {domain} not found")
+            return None
+            
+        resolved_address = result[1]
+        print(f"Resolved {domain} to {resolved_address}")
+        return resolved_address
+        
     except Exception as e:
-        print(f"An error occurred while resolving ENS: {e}")
+        print(f"An error occurred while resolving domain: {e}")
         return None
+
 
 class KMSSignature(univ.Sequence):
     componentType = namedtype.NamedTypes(
@@ -225,9 +301,12 @@ def sendTx(receiver, amount):
     print(f"Original receiver: {receiver}")
     
     # Check if it's an ENS domain, if so resolve it
-    resolved_address = resolve_ens(receiver)
-    if resolved_address:
-        receiver = resolved_address
+    if not (receiver and isinstance(receiver, str) and receiver.startswith('0x') and len(receiver) == 42):
+        resolved_address = resolve_domain(receiver)
+        if resolved_address:
+            receiver = resolved_address
+        else:
+            return "Failed to resolve receiver address"
     
     print(f"Final receiver address: {receiver}")
 
@@ -356,11 +435,14 @@ def estimate_gas(to_address, value, data='', gas_price=None):
     
 def getBalance(address):
 
-    #Check if it's an ENS domain, if so resolve it
     if not address:
         address = get_wallet_address()
-    elif address.endswith('.eth'):
-        address = resolve_ens(address)
+    elif not (address and isinstance(address, str) and address.startswith('0x') and len(address) == 42):
+        resolved_address = resolve_domain(address)
+        if resolved_address:
+            address = resolved_address
+        else:
+            return "Failed to resolve address"
     
     balance = w3.eth.get_balance(address)
 
