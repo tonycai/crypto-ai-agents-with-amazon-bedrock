@@ -32,23 +32,40 @@ export class CryptoAIAgentSupervisorStack extends cdk.Stack {
       networkType: 'POLYGON_MAINNET',
     });
 
+    const guardrail = new bedrockGenAIConstructs.Guardrail(this, 'bedrockGuardrails', {
+      name: 'agent-guardrail',
+      description: 'Guardrails to protect against malicious use of the agent.',
+    });
+
+    guardrail.addDeniedTopicFilter(bedrockGenAIConstructs.Topic.POLITICAL_ADVICE);
+    guardrail.addWordFilter('steal');
+    guardrail.addWordFilter('rugpull');
+
+    // We use cross region inference to improve inference performance
+    const cris = bedrockGenAIConstructs.CrossRegionInferenceProfile.fromConfig({
+      geoRegion: bedrockGenAIConstructs.CrossRegionInferenceProfileRegion.US,
+      model: bedrockGenAIConstructs.BedrockFoundationModel.AMAZON_NOVA_PRO_V1,
+    });
+    
     const agent = new bedrockGenAIConstructs.Agent(this, 'Agent', {
       name: 'CryptoAI_Supervisor_Agent',
-      foundationModel: bedrockGenAIConstructs.BedrockFoundationModel.AMAZON_NOVA_LITE_V1,
+      foundationModel: cris,
       shouldPrepareAgent: true,
       userInputEnabled: true,
       instruction: `
-        Role: You are a Crypto AI Agent. You have access to an Ethereum Virtual Machine compatible blockchain and can query it and send transactions from your own wallet. You can query the blockchain for information and perform actions such as sending transactions. You have access to a knowledge base that contains current blockchain news. You have access to a wallet that you can use to send transactions to the blockchain. Use the Action Group to interact with the blockchain.
-
-        These are the functions you can invoke:
-        sendTx - send a transaction to the blockchain
-        estimateGas - estimate the gas cost of a transaction
-        getBalance - get the balance of a wallet
-        getCryptoPrice - get the price of a cryptocurrency token
-        investAdviceMetric - get investment advice
-        getWalletAddress - get your own wallet's address
+      Role: You are a Crypto AI Agent. You have access to an Ethereum Virtual Machine compatible blockchain and can query it and send transactions from your own wallet. You can query the blockchain for information and perform actions such as sending transactions. You have access to a knowledge base that contains current blockchain news. You have access to a wallet that you can use to send transactions to the blockchain. Use the Action Group to interact with the blockchain.
+      
+      These are the functions you can invoke:
+      sendTx - send a transaction to the blockchain
+      estimateGas - estimate the gas cost of a transaction
+      getBalance - get the balance of a wallet
+      getCryptoPrice - get the price of a cryptocurrency token
+      investAdviceMetric - get investment advice
+      getWalletAddress - get your own wallet's address
       `,
     });
+    
+    agent.addGuardrail(guardrail);
 
     const agentAlias = new bedrockGenAIConstructs.AgentAlias(this, 'AgentAlias', {
       aliasName: 'CryptoAIAgent',

@@ -31,7 +31,7 @@ The Crypto AI Agent is designed with the following capabilities:
 
 The following diagram illustrates the solution architecture and how the various components work together to provide the Crypto AI Agent with its capabilities.
 
-![Architecture Diagram](architecture.png)
+![Architecture Diagram](images/architecture.png)
 
 1. The supervisor agent coordinates actions across its own action groups and other collaborator agents to fulfill user requests
 2. A Bedrock knowledge base that contains current blockchain news and trends
@@ -55,7 +55,7 @@ Copy `.env.sample` to a new `.env` file
 cp .env.sample .env
 ```
 
-Update `.env` with the appropriate values, including the AWS account ID.
+Update `.env` with the appropriate values, including the AWS `ACCOUNT_ID`.
 
 The solution defaults to using Polygon mainnet and accesses it via Amazon Managed Blockchain. If you want to use a different EVM-compatible network, specify the RPC endpoint in the `BLOCKCHAIN_RPC_URL` variable in the `.env`.
 
@@ -86,13 +86,16 @@ The deployment time is about 10 minutes.
 
 5. Enable Bedrock Model Access
 
-The model uses the Amazon Nova Lite v1 model and you need to enable access to this model before your agent can use it.
+The model uses the `Amazon Nova Pro v1` model for inference and `Amazon Titan` model for creating vector embeddings for the Knowledge Base. You need to enable access to these models before they can be used.
 
 - Open [Model access from the Bedrock console](https://us-east-1.console.aws.amazon.com/bedrock/home?region=us-east-1#/modelaccess).
-- Click `Modify model access`
-- Search for `Nova`. Select Amazon Nova Lite. Click `Next`, then `Submit`.
+- Click `Modify model access` or if this is your first time doing this, click `Enable specific models`.
+- Search for `Nova`. Select `Nova Pro`.
+- Clear the search.
+- Search for `Titan`. Select `Titan Embeddings G1 - Textv1.2`.
+- Click `Next`. Click `Submit`.
 
-**Orchestrating the two agents together**
+**Orchestrating the two agents**
 
 The solution deploys two agents; a Supervisor Agent (Crypto AI Agent) which coordinates the user requests across various tasks, and a Collaborator Agent (Blockchain Data Agent) which fulfills a specific need of accessing historic blockchain data. We want our users to only have to send their queries to the Supervisor Agent, instead of needing to switch between agents. Therefore, any time a user wants to query historic blockchain data, we need our Supervisor Agent to delegate this request to the Collaborator Agent. The steps below guide you on how to do this.
 
@@ -103,13 +106,30 @@ The solution deploys two agents; a Supervisor Agent (Crypto AI Agent) which coor
 5. Set the Collaborator instruction to `The blockchain-data-collaborator-agent can query historic bitcoin and ethereum data, providing data such as number of transactions within a period of time, details of a block, or how many times a token was a transferred within a period of time.`
 6. Click 'Save and exit'. Click `Prepare` to prepare a new version of the agent.
 
+**Sync the Knowledge Base**
+
+The KnowledgeBase needs to be manually synced. You can do this from the [Knowledge Bases console](https://us-east-1.console.aws.amazon.com/bedrock/home?region=us-east-1#/knowledge-bases).
+
+![KnowledgeBase Sync](images/kb-sync.png)
+
+1. Find and double-click the Knowledge Base named `KBInfraStacke2eRAG...`
+2. On the details page, select the Data Source named `crawler-ds-kbinfra...`, and click `Sync`.
+
+This can take up to an hour or more to sync, but you can continue testing below.
+
 ### Testing
 
-Test out the agent with these prompts:
-- How many bitcoin transactions were there yesterday?
-- What is your wallet address?
-- Send .00001 POL to x.polygon
-- What is the latest news on bitcoin?
+Test out the agent from the [Bedrock Agents console](https://us-east-1.console.aws.amazon.com/bedrock/home?region=us-east-1#/agents).
+
+1. Double-click the `CryptoAI_Supervisor_Agent` agent
+2. Use the `Test` panel on the right to try out prompts.
+
+Here are some prompts you can try out:
+- *How many bitcoin transactions were there yesterday?* (this showcases multi-agent orchestration with the collaborator agent)
+- *What is your wallet address?*
+- *Send .00001 POL to x.polygon*
+- *What is your wallet balance of POL?*
+- *what is the latest cryptocurrency news* (this showcases querying the Knowledge Base)
 
 ### Troubleshooting Deployment Issues
 
