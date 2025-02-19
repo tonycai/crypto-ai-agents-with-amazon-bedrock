@@ -21,13 +21,13 @@ This repository presents a solution architecture for foundational building block
 ## Solution Architecture
 The Crypto AI Agent is designed with the following capabilities:
 
-•	Analyze token market data, including real-time token prices
-•	Estimate gas fees for submitting transactions
-•	Query on-chain wallet balances for tokens
-•	Provide investment recommendations (these are simulated)
-•	Submit transactions to the blockchain (send payment to another address)
-•	Aggregate near real-time Web3 news and data
-•	Support complex tasks through multi-agent orchestration
+- Analyze token market data, including real-time token prices
+- Estimate gas fees for submitting transactions
+- Query on-chain wallet balances for tokens
+- Provide investment recommendations (these are simulated)
+- Submit transactions to the blockchain (send payment to another address)
+- Aggregate near real-time Web3 news and data
+- Support complex tasks through multi-agent orchestration
 
 The following diagram illustrates the solution architecture and how the various components work together to provide the Crypto AI Agent with its capabilities.
 
