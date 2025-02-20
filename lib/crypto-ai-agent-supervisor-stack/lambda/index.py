@@ -11,6 +11,10 @@ aws_region = boto3.session.Session().region_name
 # the KMS alias for the agent's wallet
 KMS_KEY_ALIAS='alias/crypto-ai-agent-wallet'
 
+def getUnstoppableDomainsAddress():
+    # Default is Polygon mainnet
+    return os.environ.get('UNSTOPPABLE_DOMAINS_ADDRESS', '0xa2c203d7a6931f5368fb935cf1bffa7fa4c8360e')
+
 def getBlockchainRPCURL():
     # use a blockchain rpc endpoint if it has been provided
     blockchain_rpc_url = os.environ.get('BLOCKCHAIN_RPC_URL')
@@ -132,19 +136,12 @@ def resolve_domain(domain):
 
     print(f"Resolving domain: {domain}")
     
-    # if it's an formal address then just return
+    # if it's already an address then just return
     if domain and isinstance(domain, str) and domain.startswith('0x') and len(domain) == 42:
         return domain
         
     try:
-        # initialize Polygon resolver
-        amb_accessor_token = os.environ.get('AMB_ACCESSOR_TOKEN')
-        if not amb_accessor_token:
-            raise ValueError("AMB_ACCESSOR_TOKEN environment variable is not set")
-            
-        # unstoppable mainnet contract address
-        polygon_address = os.environ.get('UNSTOPPABLE_POLYGON_ADDRESS')
-        #polygon_address = '0xA3f32c8cd786dc089Bd1fC175F2707223aeE5d00'
+        unstoppable_domains_address = getUnstoppableDomainsAddress()
         
         # ABI configuration
         abi = [
@@ -188,7 +185,7 @@ def resolve_domain(domain):
         
         # Initialize contract
         contract = w3.eth.contract(
-            address=polygon_address,
+            address=unstoppable_domains_address,
             abi=abi
         )
         
@@ -351,7 +348,7 @@ def sendTx(receiver, amount):
         tx_hash = w3.eth.send_raw_transaction(encoded_transaction)
         print(f"Transaction sent to network. Tx hash: {tx_hash}")
         tx_hash_hex = tx_hash.hex()  # Convert bytes to hex string
-        print(f"Transaction hex value used to look it up: {tx_hash_hex}")
+        print(f"Transaction hex value used to look it up: 0x{tx_hash_hex}")
         print(f"View on Polygonscan: https://polygonscan.com/tx/0x{tx_hash_hex}")
 
         # # Wait for transaction receipt

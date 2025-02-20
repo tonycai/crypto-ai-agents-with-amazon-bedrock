@@ -85,6 +85,9 @@ export class CryptoAIAgentSupervisorStack extends cdk.Stack {
       ...(config.blockchainRPCURL && {
         BLOCKCHAIN_RPC_URL: process.env.BLOCKCHAIN_RPC_URL
       }),
+      ...(config.unstoppableDomainsAddress && {
+        UNSTOPPABLE_DOMAINS_ADDRESS: process.env.UNSTOPPABLE_DOMAINS_ADDRESS
+      }),
     };
 
     const actionGroupInvestmentAdviceFunction = new lambda.DockerImageFunction(this, 'InvestmentAdviceActionGroupFunction', {

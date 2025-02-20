@@ -61,6 +61,8 @@ The solution defaults to using Polygon mainnet and accesses it via Amazon Manage
 
 (Optional) If you want your agent to query current cryptocurrency prices, you will need to obtain a [CoinGecko API key](https://www.coingecko.com/en/developers/dashboard)
 
+(Optional) The agent understands Ethereum Name Service (ENS) domain names, for example, translating `vitalik.eth` into the corresponding address. If you use the default Polygon network, this will work without any changes required. However, if you are using a different network, and want to have the agent support domain name resolution. you will need to set the Unstoppable Domains contract address in the `UNSTOPPABLE_DOMAINS_ADDRESS` variable. 
+
 3. Install dependencies
 ```
 npm install

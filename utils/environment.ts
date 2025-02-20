@@ -21,6 +21,7 @@ export interface EnvironmentConfig {
     overlapPercentage: number;
     coinGeckoAPIKey: string;
     blockchainRPCURL: string | null;
+    unstoppableDomainsAddress: string | null;
 }
 
 export function getConfig(): EnvironmentConfig {
@@ -36,6 +37,7 @@ export function getConfig(): EnvironmentConfig {
       chunkingStrategy: getRequiredEnvVar('CHUNKING_STRATEGY'),
       overlapPercentage:  parseInt(getRequiredEnvVar('OVERLAP_PERCENTAGE') || '20', 10),
       coinGeckoAPIKey: getRequiredEnvVar('COINGECKO_API_KEY'),
-      blockchainRPCURL: process.env.BLOCKCHAIN_RPC_URL || null
+      blockchainRPCURL: process.env.BLOCKCHAIN_RPC_URL || null,
+      unstoppableDomainsAddress: process.env.UNSTOPPABLE_DOMAINS_ADDRESS || null
     };
 }
