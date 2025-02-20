@@ -184,7 +184,7 @@ export class CryptoAIAgentSupervisorStack extends cdk.Stack {
             "requireConfirmation": "ENABLED",
             "parameters": {
                 "amount": {
-                  "type": "string",
+                  "type": "number",
                   "description": "The amount of the currency to send",
                   "required": true
                 },
