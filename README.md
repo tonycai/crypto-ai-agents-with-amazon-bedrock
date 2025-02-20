@@ -40,7 +40,7 @@ The following diagram illustrates the solution architecture and how the various 
 
 ## Deploy the solution
 
-The solution is an [AWS CDK](https://aws.amazon.com/cdk/) application. Follow the steps below to deploy it.
+The solution is an [AWS CDK](https://aws.amazon.com/cdk/) application. Follow the steps below to deploy it. You will need to have [Docker](https://www.docker.com/) running.
 
 1. Clone this repository and change directory into it
 ```
