@@ -143,7 +143,8 @@ def resolve_domain(domain):
             raise ValueError("AMB_ACCESSOR_TOKEN environment variable is not set")
             
         # unstoppable mainnet contract address
-        polygon_address = '0xA3f32c8cd786dc089Bd1fC175F2707223aeE5d00'
+        polygon_address = os.environ.get('UNSTOPPABLE_POLYGON_ADDRESS')
+        #polygon_address = '0xA3f32c8cd786dc089Bd1fC175F2707223aeE5d00'
         
         # ABI configuration
         abi = [
