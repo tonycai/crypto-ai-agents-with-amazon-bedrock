@@ -886,4 +886,4 @@ Outputs:
     Description: "The name of the S3 bucket used for Athena results"
     Value: !Ref AthenaResultsBucket
     Export:
-      Name: "public-blockchain-athena-results"
+      Name: "public-blockchain-athena-results-bedrock-agent"
