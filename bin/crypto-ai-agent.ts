@@ -32,7 +32,8 @@ blockchainDataAgentStack.node.addDependency(kbInfraStack);
 
 // ### Create AI Agent
 const cryptoAIAgentSupervisorStack = new CryptoAIAgentSupervisorStack(app, 'CryptoAIAgentSupervisorStack', 
-  { knowledgeBase: kbInfraStack.knowledgeBase }
+  { description: 'Crypto AI Agent Supervisor stack (uksb-tg4glnwleb)',
+    knowledgeBase: kbInfraStack.knowledgeBase }
 );
 cryptoAIAgentSupervisorStack.node.addDependency(blockchainDataAgentStack);
 

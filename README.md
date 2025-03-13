@@ -101,12 +101,14 @@ The model uses the `Amazon Nova Pro v1` model for inference and `Amazon Titan` m
 
 The solution deploys two agents; a Supervisor Agent (Crypto AI Agent) which coordinates the user requests across various tasks, and a Collaborator Agent (Blockchain Data Agent) which fulfills a specific need of accessing historic blockchain data. We want our users to only have to send their queries to the Supervisor Agent, instead of needing to switch between agents. Therefore, any time a user wants to query historic blockchain data, we need our Supervisor Agent to delegate this request to the Collaborator Agent. The steps below guide you on how to do this.
 
-1. From supervisor agent, enable multi-agent collaboration
-2. Under Collaboration configuration, select `Supervisor`
-3. Select the blockchain data agent as the collaborator, and select a version
-4. Set the collaborator name to `blockchain-data-collaborator-agent`
-5. Set the Collaborator instruction to `The blockchain-data-collaborator-agent can query historic bitcoin and ethereum data, providing data such as number of transactions within a period of time, details of a block, or how many times a token was a transferred within a period of time.`
-6. Click 'Save and exit'. Click `Prepare` to prepare a new version of the agent.
+1. Open the [Bedrock Agents console](https://us-east-1.console.aws.amazon.com/bedrock/home?region=us-east-1#/agents)
+2. Double-click the `CryptoAI_Supervisor_Agent` agent
+3. Scroll down and enable multi-agent collaboration
+4. Under Collaboration configuration, select `Supervisor`
+5. Select the blockchain data agent as the collaborator, and select a version
+6. Set the collaborator name to `blockchain-data-collaborator-agent`
+7. Set the Collaborator instruction to `The blockchain-data-collaborator-agent can query historic bitcoin and ethereum data, providing data such as number of transactions within a period of time, details of a block, or how many times a token was a transferred within a period of time.`
+8. Click 'Save and exit'. Click `Prepare` to prepare a new version of the agent.
 
 **Sync the Knowledge Base**
 
