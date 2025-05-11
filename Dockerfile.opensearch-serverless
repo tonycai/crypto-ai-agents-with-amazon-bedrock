@@ -1,0 +1,28 @@
+FROM public.ecr.aws/sam/build-python3.12:latest
+
+WORKDIR /asset-input
+
+# Install prerequisite packages with retry mechanism
+RUN for i in $(seq 1 3); do \
+    pip install --upgrade pip setuptools wheel && \
+    break || { echo "Retry pip upgrade..."; sleep 10; }; \
+    done
+
+# Pre-download popular packages to avoid timeouts
+RUN for i in $(seq 1 3); do \
+    pip install --no-cache-dir \
+    boto3 \
+    requests \
+    pytest \
+    poetry && \
+    break || { echo "Retry pip install..."; sleep 10; }; \
+    done
+
+# Create placeholder for requirements.txt
+RUN echo "boto3>=1.34.0" > requirements.txt
+RUN echo "requests>=2.31.0" >> requirements.txt
+RUN echo "pytest>=7.4.0" >> requirements.txt
+RUN echo "poetry>=2.0.0" >> requirements.txt
+
+# This will be overridden by the actual command
+CMD ["bash", "-c", "pip install -r requirements.txt -t /asset-output/python"] 
